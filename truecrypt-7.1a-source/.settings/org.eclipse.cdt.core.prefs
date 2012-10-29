@@ -1,0 +1,6 @@
+eclipse.preferences.version=1
+environment/project/cdt.managedbuild.toolchain.gnu.base.1272145768/PKCS11_INC/delimiter=\:
+environment/project/cdt.managedbuild.toolchain.gnu.base.1272145768/PKCS11_INC/operation=replace
+environment/project/cdt.managedbuild.toolchain.gnu.base.1272145768/PKCS11_INC/value=/usr/include/gck-1/gck
+environment/project/cdt.managedbuild.toolchain.gnu.base.1272145768/append=true
+environment/project/cdt.managedbuild.toolchain.gnu.base.1272145768/appendContributed=true
