@@ -40,6 +40,7 @@ namespace TrueCrypt
 		virtual bool IsPasswordCacheEmpty () const { throw NotApplicable (SRC_POS); }
 		virtual bool HasAdminPrivileges () const { return getuid() == 0 || geteuid() == 0; }
 		virtual VolumeSlotNumber MountPointToSlotNumber (const DirectoryPath &mountPoint) const;
+		virtual shared_ptr <VolumeInfo> SearchVolume (MountOptions &options);
 		virtual shared_ptr <VolumeInfo> MountVolume (MountOptions &options);
 		virtual void SetFileOwner (const FilesystemPath &path, const UserId &owner) const;
 		virtual DirectoryPath SlotNumberToMountPoint (VolumeSlotNumber slotNumber) const;

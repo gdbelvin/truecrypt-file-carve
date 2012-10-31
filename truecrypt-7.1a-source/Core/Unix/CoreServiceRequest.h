@@ -120,6 +120,22 @@ namespace TrueCrypt
 	};
 
 
+	/* Search a file system for a truecrypt volume */
+	struct SearchVolumeRequest : CoreServiceRequest
+	{
+		SearchVolumeRequest () { }
+		SearchVolumeRequest (MountOptions *options) : Options (options) { }
+		TC_SERIALIZABLE (SearchVolumeRequest);
+
+		virtual bool RequiresElevation () const;
+
+		MountOptions *Options;
+
+	protected:
+		shared_ptr <MountOptions> DeserializedOptions;
+	};
+
+
 	struct SetFileOwnerRequest : CoreServiceRequest
 	{
 		SetFileOwnerRequest () { }

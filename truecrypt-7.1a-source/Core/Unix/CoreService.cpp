@@ -179,6 +179,17 @@ namespace TrueCrypt
 						continue;
 					}
 
+					// SearchVolumeRequest
+					SearchVolumeRequest *searchRequest = dynamic_cast <SearchVolumeRequest*> (request.get());
+					if (searchRequest)
+					{
+						MountVolumeResponse (
+							Core->SearchVolume (*searchRequest->Options)
+						).Serialize (outputStream);
+
+						continue;
+					}
+
 					// MountVolumeRequest
 					MountVolumeRequest *mountRequest = dynamic_cast <MountVolumeRequest*> (request.get());
 					if (mountRequest)
@@ -260,6 +271,12 @@ namespace TrueCrypt
 		return SendRequest <GetHostDevicesResponse> (request)->HostDevices;
 	}
 	
+	shared_ptr <VolumeInfo> CoreService::RequestSearchVolume (MountOptions &options)
+	{
+		SearchVolumeRequest request (&options);
+		return SendRequest <MountVolumeResponse> (request)->MountedVolumeInfo;
+	}
+
 	shared_ptr <VolumeInfo> CoreService::RequestMountVolume (MountOptions &options)
 	{
 		MountVolumeRequest request (&options);

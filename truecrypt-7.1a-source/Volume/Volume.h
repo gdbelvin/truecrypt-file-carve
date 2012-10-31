@@ -89,6 +89,7 @@ namespace TrueCrypt
 		uint64 GetVolumeCreationTime () const { return Header->GetVolumeCreationTime(); }
 		bool IsHiddenVolumeProtectionTriggered () const { return HiddenVolumeProtectionTriggered; }
 		bool IsInSystemEncryptionScope () const { return SystemEncryption; }
+		shared_ptr <File> OpenFile (shared_ptr <VolumePath> volumePath,	uint64 offset, bool preserveTimestamps, VolumeProtection::Enum protection, bool sharedAccessAllowed);
 		void Open (const VolumePath &volumePath, bool preserveTimestamps, shared_ptr <VolumePassword> password, shared_ptr <KeyfileList> keyfiles, VolumeProtection::Enum protection = VolumeProtection::None, shared_ptr <VolumePassword> protectionPassword = shared_ptr <VolumePassword> (), shared_ptr <KeyfileList> protectionKeyfiles = shared_ptr <KeyfileList> (), bool sharedAccessAllowed = false, VolumeType::Enum volumeType = VolumeType::Unknown, bool useBackupHeaders = false, bool partitionInSystemEncryptionScope = false);
 		void Open (shared_ptr <File> volumeFile, shared_ptr <VolumePassword> password, shared_ptr <KeyfileList> keyfiles, VolumeProtection::Enum protection = VolumeProtection::None, shared_ptr <VolumePassword> protectionPassword = shared_ptr <VolumePassword> (), shared_ptr <KeyfileList> protectionKeyfiles = shared_ptr <KeyfileList> (), VolumeType::Enum volumeType = VolumeType::Unknown, bool useBackupHeaders = false, bool partitionInSystemEncryptionScope = false);
 		void ReadSectors (const BufferPtr &buffer, uint64 byteOffset);

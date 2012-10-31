@@ -62,6 +62,60 @@ namespace TrueCrypt
 #endif
 		virtual bool IsPasswordCacheEmpty () const { return VolumePasswordCache::IsEmpty(); }
 
+		virtual shared_ptr <VolumeInfo> SearchVolume (MountOptions &options)
+		{
+			shared_ptr <VolumeInfo> mountedVolume;
+
+			if (!VolumePasswordCache::IsEmpty()
+				&& (!options.Password || options.Password->IsEmpty())
+				&& (!options.Keyfiles || options.Keyfiles->empty()))
+			{
+				/* Searching for a volume is expensive. Throw exception instead */
+				throw PasswordKeyfilesIncorrect ();
+			}
+			else
+			{
+				MountOptions newOptions = options;
+
+				newOptions.Password = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password);
+				if (newOptions.Keyfiles)
+					newOptions.Keyfiles->clear();
+
+				newOptions.ProtectionPassword = Keyfile::ApplyListToPassword (options.ProtectionKeyfiles, options.ProtectionPassword);
+				if (newOptions.ProtectionKeyfiles)
+					newOptions.ProtectionKeyfiles->clear();
+
+				try
+				{
+					mountedVolume = CoreService::RequestSearchVolume (newOptions);
+				}
+				catch (ProtectionPasswordIncorrect &e)
+				{
+					if (options.ProtectionKeyfiles && !options.ProtectionKeyfiles->empty())
+						throw ProtectionPasswordKeyfilesIncorrect (e.what());
+					throw;
+				}
+				catch (PasswordIncorrect &e)
+				{
+					if (options.Keyfiles && !options.Keyfiles->empty())
+						throw PasswordKeyfilesIncorrect (e.what());
+					throw;
+				}
+
+				if (options.CachePassword
+					&& ((options.Password && !options.Password->IsEmpty()) || (options.Keyfiles && !options.Keyfiles->empty())))
+				{
+					VolumePasswordCache::Store (*Keyfile::ApplyListToPassword (options.Keyfiles, options.Password));
+				}
+			}
+
+			VolumeEventArgs eventArgs (mountedVolume);
+			T::VolumeMountedEvent.Raise (eventArgs);
+
+			return mountedVolume;
+
+		}
+
 		virtual shared_ptr <VolumeInfo> MountVolume (MountOptions &options)
 		{
 			shared_ptr <VolumeInfo> mountedVolume;

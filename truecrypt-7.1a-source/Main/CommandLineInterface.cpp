@@ -76,6 +76,7 @@ namespace TrueCrypt
 		parser.AddSwitch (L"",	L"version",				_("Display version information"));
 		parser.AddSwitch (L"",	L"volume-properties",	_("Display volume properties"));
 		parser.AddOption (L"",	L"volume-type",			_("Volume type"));
+		parser.AddSwitch (L"",	L"search",				_("Search for the truecrypt volume"));
 		parser.AddParam (								_("Volume path"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
 		parser.AddParam (								_("Mount point"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
 
@@ -212,6 +213,13 @@ namespace TrueCrypt
 		{
 			CheckCommandSingle();
 			ArgCommand = CommandId::ListSecurityTokenKeyfiles;
+		}
+
+		if (parser.Found (L"search"))
+		{
+			CheckCommandSingle();
+			ArgCommand = CommandId::SearchVolume;
+			param1IsVolume = true;
 		}
 
 		if (parser.Found (L"mount"))

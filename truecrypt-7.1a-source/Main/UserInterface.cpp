@@ -876,6 +876,7 @@ namespace TrueCrypt
 		case CommandId::AutoMountDevices:
 		case CommandId::AutoMountFavorites:
 		case CommandId::AutoMountDevicesFavorites:
+		case CommandId::SearchVolume:
 		case CommandId::MountVolume:
 			{
 				cmdLine.ArgMountOptions.Path = cmdLine.ArgVolumePath;
@@ -908,6 +909,14 @@ namespace TrueCrypt
 					break;
 
 
+					break;
+
+
+				case CommandId::SearchVolume:
+					if (!cmdLine.ArgMountOptions.Path)
+						throw MissingArgument (SRC_POS);
+
+					mountedVolumes.push_back (Core->SearchVolume (cmdLine.ArgMountOptions));
 					break;
 
 				case CommandId::MountVolume:

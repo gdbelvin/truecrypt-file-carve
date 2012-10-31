@@ -189,6 +189,44 @@ namespace TrueCrypt
 		CoreServiceRequest::Serialize (stream);
 	}
 
+	// SearchVolumeRequest
+	void SearchVolumeRequest::Deserialize (shared_ptr <Stream> stream)
+	{
+		CoreServiceRequest::Deserialize (stream);
+		Serializer sr (stream);
+		DeserializedOptions = Serializable::DeserializeNew <MountOptions> (stream);
+		Options = DeserializedOptions.get();
+	}
+
+
+	bool SearchVolumeRequest::RequiresElevation () const
+	{
+#ifdef TC_MACOSX
+		if (Options->Path->IsDevice())
+		{
+			try
+			{
+				File file;
+				file.Open (*Options->Path, File::OpenReadWrite);
+			}
+			catch (...)
+			{
+				return true;
+			}
+		}
+
+		return false;
+#endif
+		return !Core->HasAdminPrivileges();
+	}
+
+	void SearchVolumeRequest::Serialize (shared_ptr <Stream> stream) const
+	{
+		CoreServiceRequest::Serialize (stream);
+		Serializer sr (stream);
+		Options->Serialize (stream);
+	}
+
 	// MountVolumeRequest
 	void MountVolumeRequest::Deserialize (shared_ptr <Stream> stream)
 	{
@@ -264,6 +302,7 @@ namespace TrueCrypt
 	TC_SERIALIZER_FACTORY_ADD_CLASS (GetDeviceSectorSizeRequest);
 	TC_SERIALIZER_FACTORY_ADD_CLASS (GetDeviceSizeRequest);
 	TC_SERIALIZER_FACTORY_ADD_CLASS (GetHostDevicesRequest);
+	TC_SERIALIZER_FACTORY_ADD_CLASS (SearchVolumeRequest);
 	TC_SERIALIZER_FACTORY_ADD_CLASS (MountVolumeRequest);
 	TC_SERIALIZER_FACTORY_ADD_CLASS (SetFileOwnerRequest);
 }

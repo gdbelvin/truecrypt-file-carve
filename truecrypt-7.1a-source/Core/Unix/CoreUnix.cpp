@@ -390,6 +390,211 @@ namespace TrueCrypt
 		return GetFirstFreeSlotNumber();
 	}
 
+	shared_ptr <VolumeInfo> CoreUnix::SearchVolume (MountOptions &options)
+	{
+		CoalesceSlotNumberAndMountPoint (options);
+
+		if (IsVolumeMounted (*options.Path))
+			throw VolumeAlreadyMounted (SRC_POS);
+
+		Cipher::EnableHwSupport (!options.NoHardwareCrypto);
+
+		printf("CoreUnix::SearchVolume\n");
+
+		make_shared_auto (Volume, volume);
+		options.Protection = VolumeProtection::ReadOnly;
+
+		/* Open the file system one byte offset at a time */
+		shared_ptr<File> file;
+		uint64 file_length;
+		uint64 cnt_pos = 0;
+
+		file = volume->OpenFile (
+						options.Path,
+						cnt_pos,
+						options.PreserveTimestamps,
+						options.Protection,
+						options.SharedAccessAllowed
+						);
+
+		/* get capacity */
+		file_length = file->Length();
+		printf("file_length: %ld\n", file_length);
+
+		for(cnt_pos = 0; cnt_pos < file_length; cnt_pos++)
+		{
+			/* Attempt to open as a truecrypt volume */
+			try
+			{
+				volume->Open (
+						file,
+						options.Password,
+						options.Keyfiles,
+						options.Protection,
+						options.ProtectionPassword,
+						options.ProtectionKeyfiles,
+						VolumeType::Unknown,
+						options.UseBackupHeaders,
+						options.PartitionInSystemEncryptionScope);
+
+				break;
+			}
+			catch (PasswordIncorrect &e)
+			{
+				printf("Password Incorrect\n");
+				continue;
+			}
+			catch (SystemException &e)
+			{
+				printf("System exception\n");
+				throw;
+			}
+			printf("End of loop\n");
+		}
+
+		if(!volume)
+		{
+			printf("Failed to find volume\n");
+			throw PasswordIncorrect();
+		}
+
+		if (options.Path->IsDevice())
+		{
+			if (volume->GetFile()->GetDeviceSectorSize() != volume->GetSectorSize())
+				throw ParameterIncorrect (SRC_POS);
+
+#if defined (TC_LINUX)
+			if (volume->GetSectorSize() != TC_SECTOR_SIZE_LEGACY)
+			{
+				if (options.Protection == VolumeProtection::HiddenVolumeReadOnly)
+					throw UnsupportedSectorSizeHiddenVolumeProtection();
+
+				if (options.NoKernelCrypto)
+					throw UnsupportedSectorSizeNoKernelCrypto();
+			}
+#endif
+		}
+
+		// Find a free mount point for FUSE service
+		MountedFilesystemList mountedFilesystems = GetMountedFilesystems ();
+		string fuseMountPoint;
+		for (int i = 1; true; i++)
+		{
+			stringstream path;
+			path << GetTempDirectory() << "/" << GetFuseMountDirPrefix() << i;
+			FilesystemPath fsPath (path.str());
+
+			bool inUse = false;
+
+			foreach_ref (const MountedFilesystem &mf, mountedFilesystems)
+			{
+				if (mf.MountPoint == path.str())
+				{
+					inUse = true;
+					break;
+				}
+			}
+
+			if (!inUse)
+			{
+				try
+				{
+					if (fsPath.IsDirectory())
+						fsPath.Delete();
+
+					throw_sys_sub_if (mkdir (path.str().c_str(), S_IRUSR | S_IXUSR) == -1, path.str());
+
+					fuseMountPoint = fsPath;
+					break;
+				}
+				catch (...)
+				{
+					if (i > 255)
+						throw TemporaryDirectoryFailure (SRC_POS, StringConverter::ToWide (path.str()));
+				}
+			}
+		}
+
+		try
+		{
+			FuseService::Mount (volume, options.SlotNumber, fuseMountPoint);
+		}
+		catch (...)
+		{
+			try
+			{
+				DirectoryPath (fuseMountPoint).Delete();
+			}
+			catch (...) { }
+			throw;
+		}
+
+		try
+		{
+			// Create a mount directory if a default path has been specified
+			bool mountDirCreated = false;
+			string mountPoint;
+			if (!options.NoFilesystem && options.MountPoint)
+			{
+				mountPoint = *options.MountPoint;
+
+#ifndef TC_MACOSX
+				if (mountPoint.find (GetDefaultMountPointPrefix()) == 0 && !options.MountPoint->IsDirectory())
+				{
+					Directory::Create (*options.MountPoint);
+					try
+					{
+						throw_sys_sub_if (chown (mountPoint.c_str(), GetRealUserId(), GetRealGroupId()) == -1, mountPoint);
+					} catch (ParameterIncorrect&) { }
+
+					mountDirCreated = true;
+				}
+#endif
+			}
+
+			try
+			{
+				try
+				{
+					MountVolumeNative (volume, options, fuseMountPoint);
+				}
+				catch (NotApplicable&)
+				{
+					MountAuxVolumeImage (fuseMountPoint, options);
+				}
+			}
+			catch (...)
+			{
+				if (mountDirCreated)
+					remove (mountPoint.c_str());
+				throw;
+			}
+		}
+		catch (...)
+		{
+			try
+			{
+				VolumeInfoList mountedVolumes = GetMountedVolumes (*options.Path);
+				if (mountedVolumes.size() > 0)
+				{
+					shared_ptr <VolumeInfo> mountedVolume (mountedVolumes.front());
+					DismountVolume (mountedVolume);
+				}
+			}
+			catch (...) { }
+			throw;
+		}
+
+		VolumeInfoList mountedVolumes = GetMountedVolumes (*options.Path);
+		if (mountedVolumes.size() != 1)
+			throw ParameterIncorrect (SRC_POS);
+
+		VolumeEventArgs eventArgs (mountedVolumes.front());
+		VolumeMountedEvent.Raise (eventArgs);
+
+		return mountedVolumes.front();
+	}
+
 	shared_ptr <VolumeInfo> CoreUnix::MountVolume (MountOptions &options)
 	{
 		CoalesceSlotNumberAndMountPoint (options);

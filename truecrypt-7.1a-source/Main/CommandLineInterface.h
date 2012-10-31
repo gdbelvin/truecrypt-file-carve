@@ -41,6 +41,7 @@ namespace TrueCrypt
 			ListSecurityTokenKeyfiles,
 			ListVolumes,
 			MountVolume,
+			SearchVolume,
 			RestoreHeaders,
 			SavePreferences,
 			Test
