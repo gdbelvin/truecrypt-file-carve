@@ -11,6 +11,7 @@
 *.d
 *.a
 *.gch
+*.out
 
 # Packages
 *.egg
