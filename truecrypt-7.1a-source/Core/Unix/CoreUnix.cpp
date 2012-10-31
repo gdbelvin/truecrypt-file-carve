@@ -421,13 +421,54 @@ namespace TrueCrypt
 		file_length = file->Length();
 		printf("file_length: %ld\n", file_length);
 
+		time_t t;
+		time_t start_time;
+		double percent;
+		long seconds_elapsed;
+		long seconds_left;
+		struct tm * time_left;
+		struct tm * time_elapsed;
+		char timestr[50];
+		char elapsed[50];
+		int days_elapsed;
+		int days_remaining;
+
+		start_time = t = time(0);
 		for(cnt_pos = 0; cnt_pos < file_length; cnt_pos++)
 		{
+			if(time(0) > t)
+			{
+				t = time(0);
+				percent = cnt_pos / (double) file_length;
+
+				//seconds_left = seconds_elapsed * bytes_remaining  / (double) i;
+				seconds_elapsed = (t - start_time);
+				seconds_left = (t - start_time) * (file_length - cnt_pos) / (double) cnt_pos;
+				time_elapsed = gmtime ( &seconds_elapsed );
+
+				strftime(elapsed, sizeof(elapsed), "%T", time_elapsed);
+				days_elapsed = time_elapsed->tm_yday;
+
+				time_left = gmtime ( &seconds_left );
+				strftime(timestr, sizeof(timestr), "%T", time_left);
+				days_remaining = time_left->tm_yday;
+
+				fprintf(stderr, "%f%% (%'ld of %'ld), %d:%s elapsed, %d:%s remaining\n",
+						percent*100, cnt_pos, file_length,
+						days_elapsed, elapsed,
+						days_remaining, timestr);
+			}
+
+
+
 			/* Attempt to open as a truecrypt volume */
 			try
 			{
-				volume->Open (
+				printf("Opening at 0x%lx\n", cnt_pos);
+				file->SeekAt(cnt_pos);
+				volume->OpenAt (
 						file,
+						cnt_pos,
 						options.Password,
 						options.Keyfiles,
 						options.Protection,
@@ -441,7 +482,6 @@ namespace TrueCrypt
 			}
 			catch (PasswordIncorrect &e)
 			{
-				printf("Password Incorrect\n");
 				continue;
 			}
 			catch (SystemException &e)
@@ -457,6 +497,8 @@ namespace TrueCrypt
 			printf("Failed to find volume\n");
 			throw PasswordIncorrect();
 		}
+
+		printf("SUCCESS!!!! at %lx\n", cnt_pos);
 
 		if (options.Path->IsDevice())
 		{

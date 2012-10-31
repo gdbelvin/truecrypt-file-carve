@@ -15,6 +15,7 @@
 #include "VolumeHeader.h"
 #include "VolumeLayout.h"
 #include "Common/Crypto.h"
+#include <stdio.h>
 
 namespace TrueCrypt {
 Volume::Volume() :
@@ -133,6 +134,224 @@ void Volume::Open(const VolumePath &volumePath, bool preserveTimestamps,
 	}
 
 	return Open (file, password, keyfiles, protection, protectionPassword, protectionKeyfiles, volumeType, useBackupHeaders, partitionInSystemEncryptionScope);
+}
+
+void Volume::OpenAt(shared_ptr<File> volumeFile, uint64 offset, shared_ptr <VolumePassword>password, shared_ptr <KeyfileList> keyfiles, VolumeProtection::Enum protection, shared_ptr <VolumePassword> protectionPassword, shared_ptr <KeyfileList> protectionKeyfiles, VolumeType::Enum volumeType, bool useBackupHeaders, bool partitionInSystemEncryptionScope)
+{
+	if (!volumeFile)
+	throw ParameterIncorrect (SRC_POS);
+
+	Protection = protection;
+	VolumeFile = volumeFile;
+	SystemEncryption = partitionInSystemEncryptionScope;
+
+	try
+	{
+		VolumeHostSize = VolumeFile->Length();
+		shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (keyfiles, password);
+
+		bool skipLayoutV1Normal = false;
+
+		bool deviceHosted = GetPath().IsDevice();
+		size_t hostDeviceSectorSize = 0;
+		if (deviceHosted)
+		hostDeviceSectorSize = volumeFile->GetDeviceSectorSize();
+
+		// Test volume layouts
+		foreach (shared_ptr <VolumeLayout> layout, VolumeLayout::GetAvailableLayouts (volumeType))
+		{
+			if (skipLayoutV1Normal && typeid (*layout) == typeid (VolumeLayoutV1Normal))
+			{
+				// Skip VolumeLayoutV1Normal as it shares header location with VolumeLayoutV2Normal
+				continue;
+			}
+
+			if (useBackupHeaders && !layout->HasBackupHeader())
+			continue;
+
+			if (typeid (*layout) == typeid (VolumeLayoutV1Hidden)
+					&& deviceHosted
+					&& hostDeviceSectorSize != TC_SECTOR_SIZE_LEGACY)
+			{
+				continue;
+			}
+
+			SecureBuffer headerBuffer (layout->GetHeaderSize());
+
+			if (layout->HasDriveHeader())
+			{
+				if (!partitionInSystemEncryptionScope)
+				continue;
+
+				if (!GetPath().IsDevice())
+				throw PartitionDeviceRequired (SRC_POS);
+
+				File driveDevice;
+				driveDevice.Open (DevicePath (wstring (GetPath())).ToHostDriveOfPartition());
+
+				int headerOffset = layout->GetHeaderOffset();
+
+				if (headerOffset >= 0){
+					driveDevice.SeekAt (headerOffset + offset);
+				}
+				else{
+					printf("Seeking to end FAIL\n");
+					driveDevice.SeekEnd (headerOffset);
+				}
+
+				if (driveDevice.Read (headerBuffer) != layout->GetHeaderSize())
+				continue;
+			}
+			else
+			{
+				if (partitionInSystemEncryptionScope)
+				continue;
+
+				int headerOffset = useBackupHeaders ? layout->GetBackupHeaderOffset() : layout->GetHeaderOffset();
+
+				if (headerOffset >= 0){
+					VolumeFile->SeekAt (headerOffset + offset);
+				}
+				else{
+					//printf("Seeing to end FAIL2\n");
+					VolumeFile->SeekEnd (headerOffset);
+				}
+
+				if (VolumeFile->Read (headerBuffer) != layout->GetHeaderSize())
+				continue;
+			}
+
+			EncryptionAlgorithmList layoutEncryptionAlgorithms = layout->GetSupportedEncryptionAlgorithms();
+			EncryptionModeList layoutEncryptionModes = layout->GetSupportedEncryptionModes();
+
+			if (typeid (*layout) == typeid (VolumeLayoutV2Normal))
+			{
+				skipLayoutV1Normal = true;
+
+				// Test all algorithms and modes of VolumeLayoutV1Normal as it shares header location with VolumeLayoutV2Normal
+				layoutEncryptionAlgorithms = EncryptionAlgorithm::GetAvailableAlgorithms();
+				layoutEncryptionModes = EncryptionMode::GetAvailableModes();
+			}
+
+			shared_ptr <VolumeHeader> header = layout->GetHeader();
+
+			if (header->Decrypt (headerBuffer, *passwordKey, layout->GetSupportedKeyDerivationFunctions(), layoutEncryptionAlgorithms, layoutEncryptionModes))
+			{
+				// Header decrypted
+
+				printf("Header Decrypt Success!\n");
+
+				if (typeid (*layout) == typeid (VolumeLayoutV2Normal) && header->GetRequiredMinProgramVersion() < 0x600)
+				{
+					// VolumeLayoutV1Normal has been opened as VolumeLayoutV2Normal
+					layout.reset (new VolumeLayoutV1Normal);
+					header->SetSize (layout->GetHeaderSize());
+					layout->SetHeader (header);
+				}
+
+				Type = layout->GetType();
+				SectorSize = header->GetSectorSize();
+
+				VolumeDataOffset = layout->GetDataOffset (VolumeHostSize);
+				VolumeDataSize = layout->GetDataSize (VolumeHostSize);
+
+				Header = header;
+				Layout = layout;
+				EA = header->GetEncryptionAlgorithm();
+				EncryptionMode &mode = *EA->GetMode();
+
+				if (layout->HasDriveHeader())
+				{
+					if (header->GetEncryptedAreaLength() != header->GetVolumeDataSize())
+					throw VolumeEncryptionNotCompleted (SRC_POS);
+
+					uint64 partitionStartOffset = VolumeFile->GetPartitionDeviceStartOffset();
+
+					if (partitionStartOffset < header->GetEncryptedAreaStart()
+							|| partitionStartOffset >= header->GetEncryptedAreaStart() + header->GetEncryptedAreaLength())
+					throw PasswordIncorrect (SRC_POS);
+
+					mode.SetSectorOffset (partitionStartOffset / ENCRYPTION_DATA_UNIT_SIZE);
+				}
+				else if (typeid (mode) == typeid (EncryptionModeLRW))
+				{
+					mode.SetSectorOffset (VolumeDataOffset / SectorSize);
+				}
+
+				// Volume protection
+				if (Protection == VolumeProtection::HiddenVolumeReadOnly)
+				{
+					if (Type == VolumeType::Hidden)
+					throw PasswordIncorrect (SRC_POS);
+					else
+					{
+						try
+						{
+							Volume protectedVolume;
+
+							protectedVolume.Open (VolumeFile,
+									protectionPassword, protectionKeyfiles,
+									VolumeProtection::ReadOnly,
+									shared_ptr <VolumePassword> (), shared_ptr <KeyfileList> (),
+									VolumeType::Hidden,
+									useBackupHeaders);
+
+							if (protectedVolume.GetType() != VolumeType::Hidden)
+							ParameterIncorrect (SRC_POS);
+
+							ProtectedRangeStart = protectedVolume.VolumeDataOffset;
+							ProtectedRangeEnd = protectedVolume.VolumeDataOffset + protectedVolume.VolumeDataSize;
+
+							if (typeid (*protectedVolume.Layout) == typeid (VolumeLayoutV1Hidden))
+							ProtectedRangeEnd += protectedVolume.Layout->GetHeaderSize();
+						}
+						catch (PasswordException&)
+						{
+							if (protectionKeyfiles && !protectionKeyfiles->empty())
+							throw ProtectionPasswordKeyfilesIncorrect (SRC_POS);
+							throw ProtectionPasswordIncorrect (SRC_POS);
+						}
+					}
+				}
+				return;
+			}
+		}
+
+		if (partitionInSystemEncryptionScope)
+		throw PasswordOrKeyboardLayoutIncorrect (SRC_POS);
+
+		if (!partitionInSystemEncryptionScope && GetPath().IsDevice())
+		{
+			// Check if the device contains TrueCrypt Boot Loader
+			try
+			{
+				File driveDevice;
+				driveDevice.Open (DevicePath (wstring (GetPath())).ToHostDriveOfPartition());
+
+				Buffer mbr (VolumeFile->GetDeviceSectorSize());
+				driveDevice.ReadAt (mbr, 0);
+
+				// Search for the string "TrueCrypt"
+				size_t nameLen = strlen (TC_APP_NAME);
+				for (size_t i = 0; i < mbr.Size() - nameLen; ++i)
+				{
+					if (memcmp (mbr.Ptr() + i, TC_APP_NAME, nameLen) == 0)
+					throw PasswordOrMountOptionsIncorrect (SRC_POS);
+				}
+			}
+			catch (PasswordOrMountOptionsIncorrect&) {throw;}
+			catch (...) {}
+		}
+
+		if (keyfiles && !keyfiles->empty())
+		throw PasswordKeyfilesIncorrect (SRC_POS);
+		throw PasswordIncorrect (SRC_POS);
+	}
+	catch (...)
+	{
+		Close();
+		throw;
+	}
 }
 
 void Volume::Open(shared_ptr<File> volumeFile, shared_ptr <VolumePassword>password, shared_ptr <KeyfileList> keyfiles, VolumeProtection::Enum protection, shared_ptr <VolumePassword> protectionPassword, shared_ptr <KeyfileList> protectionKeyfiles, VolumeType::Enum volumeType, bool useBackupHeaders, bool partitionInSystemEncryptionScope)
