@@ -160,6 +160,7 @@ void Volume::OpenAt(shared_ptr<File> volumeFile, uint64 offset, shared_ptr <Volu
 		// Test volume layouts
 		foreach (shared_ptr <VolumeLayout> layout, VolumeLayout::GetAvailableLayouts (volumeType))
 		{
+			//printf("Trying volume layout %d\n", typeid(*layout) == typeid (VolumeLayoutV2Normal));
 			if (skipLayoutV1Normal && typeid (*layout) == typeid (VolumeLayoutV1Normal))
 			{
 				// Skip VolumeLayoutV1Normal as it shares header location with VolumeLayoutV2Normal
@@ -224,6 +225,7 @@ void Volume::OpenAt(shared_ptr<File> volumeFile, uint64 offset, shared_ptr <Volu
 			EncryptionAlgorithmList layoutEncryptionAlgorithms = layout->GetSupportedEncryptionAlgorithms();
 			EncryptionModeList layoutEncryptionModes = layout->GetSupportedEncryptionModes();
 
+			/*
 			if (typeid (*layout) == typeid (VolumeLayoutV2Normal))
 			{
 				skipLayoutV1Normal = true;
@@ -232,6 +234,7 @@ void Volume::OpenAt(shared_ptr<File> volumeFile, uint64 offset, shared_ptr <Volu
 				layoutEncryptionAlgorithms = EncryptionAlgorithm::GetAvailableAlgorithms();
 				layoutEncryptionModes = EncryptionMode::GetAvailableModes();
 			}
+			*/
 
 			shared_ptr <VolumeHeader> header = layout->GetHeader();
 

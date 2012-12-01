@@ -28,10 +28,10 @@ namespace TrueCrypt
 		VolumeLayoutList layouts;
 
 		layouts.push_back (shared_ptr <VolumeLayout> (new VolumeLayoutV2Normal ()));
-		layouts.push_back (shared_ptr <VolumeLayout> (new VolumeLayoutV1Normal ()));
-		layouts.push_back (shared_ptr <VolumeLayout> (new VolumeLayoutV2Hidden ()));
-		layouts.push_back (shared_ptr <VolumeLayout> (new VolumeLayoutV1Hidden ()));
-		layouts.push_back (shared_ptr <VolumeLayout> (new VolumeLayoutSystemEncryption ()));
+		//layouts.push_back (shared_ptr <VolumeLayout> (new VolumeLayoutV1Normal ()));
+		//layouts.push_back (shared_ptr <VolumeLayout> (new VolumeLayoutV2Hidden ()));
+		//layouts.push_back (shared_ptr <VolumeLayout> (new VolumeLayoutV1Hidden ()));
+		//layouts.push_back (shared_ptr <VolumeLayout> (new VolumeLayoutSystemEncryption ()));
 
 		if (type != VolumeType::Unknown)
 		{
@@ -64,6 +64,7 @@ namespace TrueCrypt
 		HeaderOffset = TC_VOLUME_HEADER_OFFSET;
 		HeaderSize = TC_VOLUME_HEADER_SIZE_LEGACY;
 
+		/*
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AES ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Serpent ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Twofish ()));
@@ -82,6 +83,7 @@ namespace TrueCrypt
 		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeXTS ()));
 		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeLRW ()));
 		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeCBC ()));
+		*/
 	}
 
 	uint64 VolumeLayoutV1Normal::GetDataOffset (uint64 volumeHostSize) const
@@ -101,6 +103,7 @@ namespace TrueCrypt
 		HeaderOffset = -TC_HIDDEN_VOLUME_HEADER_OFFSET_LEGACY;
 		HeaderSize = TC_VOLUME_HEADER_SIZE_LEGACY;
 
+		/*
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AES ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Serpent ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Twofish ()));
@@ -119,6 +122,7 @@ namespace TrueCrypt
 		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeXTS ()));
 		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeLRW ()));
 		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeCBC ()));
+		*/
 	}
 
 	uint64 VolumeLayoutV1Hidden::GetDataOffset (uint64 volumeHostSize) const
@@ -140,13 +144,13 @@ namespace TrueCrypt
 		BackupHeaderOffset = -TC_VOLUME_HEADER_GROUP_SIZE;
 
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AES ()));
-		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Serpent ()));
-		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Twofish ()));
-		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AESTwofish ()));
-		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AESTwofishSerpent ()));
-		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new SerpentAES ()));
-		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new SerpentTwofishAES ()));
-		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new TwofishSerpent ()));
+		//SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Serpent ()));
+		//SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Twofish ()));
+		//SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AESTwofish ()));
+		//SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AESTwofishSerpent ()));
+		//SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new SerpentAES ()));
+		//SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new SerpentTwofishAES ()));
+		//SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new TwofishSerpent ()));
 
 		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeXTS ()));
 	}
@@ -177,6 +181,7 @@ namespace TrueCrypt
 		HeaderSize = TC_VOLUME_HEADER_SIZE;
 		BackupHeaderOffset = -TC_HIDDEN_VOLUME_HEADER_OFFSET;
 
+		/*
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AES ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Serpent ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Twofish ()));
@@ -187,6 +192,7 @@ namespace TrueCrypt
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new TwofishSerpent ()));
 
 		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeXTS ()));
+		*/
 	}
 
 	uint64 VolumeLayoutV2Hidden::GetDataOffset (uint64 volumeHostSize) const
@@ -222,6 +228,7 @@ namespace TrueCrypt
 		HeaderOffset = TC_BOOT_VOLUME_HEADER_SECTOR_OFFSET;
 		HeaderSize = TC_BOOT_ENCRYPTION_VOLUME_HEADER_SIZE;
 
+		/*
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AES ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Serpent ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Twofish ()));
@@ -232,6 +239,7 @@ namespace TrueCrypt
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new TwofishSerpent ()));
 
 		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeXTS ()));
+		*/
 	}
 
 	uint64 VolumeLayoutSystemEncryption::GetDataOffset (uint64 volumeHostSize) const

@@ -13,6 +13,7 @@
 #include "VolumeHeader.h"
 #include "VolumeException.h"
 #include "Common/Crypto.h"
+#include "stdio.h"
 
 namespace TrueCrypt
 {
@@ -100,6 +101,14 @@ namespace TrueCrypt
 				{
 					if (!ea->IsModeSupported (mode))
 						continue;
+
+					/*
+					printf("trying %ls, %ls, %ls\n", pkcs5->GetName().c_str(),
+												mode->GetName().c_str(),
+												ea->GetName().c_str()
+												);
+												*/
+
 
 					if (typeid (*mode) == typeid (EncryptionModeXTS))
 					{

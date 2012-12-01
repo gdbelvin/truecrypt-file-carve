@@ -432,9 +432,11 @@ namespace TrueCrypt
 		char elapsed[50];
 		int days_elapsed;
 		int days_remaining;
+		int years_remaining;
 
 		start_time = t = time(0);
-		for(cnt_pos = 0; cnt_pos < file_length; cnt_pos++)
+		/* Assume header starts on 512 byte sector boundaries */
+		for(cnt_pos = 0; cnt_pos < file_length; cnt_pos += 512)
 		{
 			if(time(0) > t)
 			{
@@ -443,7 +445,10 @@ namespace TrueCrypt
 
 				//seconds_left = seconds_elapsed * bytes_remaining  / (double) i;
 				seconds_elapsed = (t - start_time);
-				seconds_left = (t - start_time) * (file_length - cnt_pos) / (double) cnt_pos;
+				// seconds left = total left / (tries per second)
+				// tries per second = cnt pos / seconds elapsed
+
+				seconds_left = (seconds_elapsed * (file_length - cnt_pos)) / (double) cnt_pos;
 				time_elapsed = gmtime ( &seconds_elapsed );
 
 				strftime(elapsed, sizeof(elapsed), "%T", time_elapsed);
@@ -451,20 +456,20 @@ namespace TrueCrypt
 
 				time_left = gmtime ( &seconds_left );
 				strftime(timestr, sizeof(timestr), "%T", time_left);
-				days_remaining = time_left->tm_yday;
+				years_remaining = seconds_left / 31557600;
+				days_remaining  = (seconds_left - years_remaining * 31557600) / 86400;
 
-				fprintf(stderr, "%f%% (%'ld of %'ld), %d:%s elapsed, %d:%s remaining\n",
-						percent*100, cnt_pos, file_length,
+				fprintf(stderr, "%f%% (%'ld of %'ld)(0x%lx of 0x%lx) %d:%s elapsed, %dy:%d:%s left\n",
+						percent*100,
+						cnt_pos, file_length,
+						cnt_pos, file_length,
 						days_elapsed, elapsed,
-						days_remaining, timestr);
+						years_remaining, days_remaining, timestr);
 			}
-
-
 
 			/* Attempt to open as a truecrypt volume */
 			try
 			{
-				printf("Opening at 0x%lx\n", cnt_pos);
 				file->SeekAt(cnt_pos);
 				volume->OpenAt (
 						file,
